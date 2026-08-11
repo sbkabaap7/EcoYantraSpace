@@ -6,17 +6,7 @@ Hackathon-ready forest loss/gain detection with an India map and a FastAPI inter
 
 The CarbonSense energy-demand and carbon-footprint forecasting project is preserved as a self-contained module in [`modules/carbon_footprint`](modules/carbon_footprint). It has its own FastAPI service, dashboard, model artifacts, demonstration data, tests, requirements, and Dockerfile, so it does not overwrite or interfere with the VanDrishti forest-detection application.
 
-Run it separately on port 8001:
-
-```powershell
-cd modules/carbon_footprint
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8001
-```
-
-Open `http://localhost:8001` for the CarbonSense dashboard.
+Run it separately from `modules/carbon_footprint`; complete VS Code instructions are included below.
 
 - forest loss and gain area estimates;
 - a transparent map overlay;
@@ -26,23 +16,146 @@ Open `http://localhost:8001` for the CarbonSense dashboard.
 - source-scene previews, NDVI-intensity layer, overlay opacity, downloadable GeoJSON/CSV, and a printable decision brief;
 - an optional trainable U-Net path for labeled datasets.
 
-## Run locally
+## Run VanDrishti in VS Code on Windows
 
-### One-click Windows setup
+### Prerequisites
 
-Extract the ZIP, then double-click `START_VANDRISHTI.bat`. The launcher finds or installs Python 3.12, replaces an incompatible project environment, creates an isolated `.venv`, installs the packages from `requirements.txt`, starts the API on an available local port, and opens the dashboard. Internet access is required for the initial setup. Keep the `VanDrishti API` terminal window open while using the application.
+Install the following before starting:
 
-### Manual setup
+- Windows 10 or 11;
+- [Visual Studio Code](https://code.visualstudio.com/);
+- [Python 3.12](https://www.python.org/downloads/) (the project is tested with Python 3.12);
+- the Microsoft Python extension for VS Code (recommended);
+- an internet connection for the first package installation and for live satellite analysis.
+
+Do not use Python 3.14 for this project. Some geospatial packages may not have compatible Python 3.14 builds.
+
+### 1. Open the correct folder
+
+1. Open VS Code.
+2. Select **File > Open Folder**.
+3. Select the project root: the folder containing `backend`, `frontend`, `requirements.txt`, and `START_VANDRISHTI.bat`.
+4. Select **Terminal > New Terminal**.
+
+The terminal must be at the project root, not inside `modules/carbon_footprint`. Check it with:
 
 ```powershell
-py -3.12 -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python scripts/generate_demo.py
-uvicorn backend.app.main:app --reload
+Get-Location
 ```
 
-Open `http://localhost:8000`. Interactive API documentation is at `http://localhost:8000/docs`.
+If the terminal is currently inside `modules/carbon_footprint`, return to the root with:
+
+```powershell
+deactivate 2>$null
+cd ..\..
+```
+
+### 2. Create the Python environment and install packages
+
+Run these commands from the project root:
+
+```powershell
+py -3.12 --version
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe scripts\generate_demo.py
+```
+
+The last command is safe to rerun and prepares the demonstration images. The commands use the environment's Python executable directly, so PowerShell script-execution policy does not need to be changed.
+
+### 3. Select the VS Code Python interpreter
+
+1. Press `Ctrl+Shift+P`.
+2. Search for **Python: Select Interpreter**.
+3. Select `.venv\Scripts\python.exe` from the project root.
+
+Do not select `modules\carbon_footprint\.venv`; that is a separate environment for the optional CarbonSense application.
+
+### 4. Start VanDrishti
+
+From the project root, run:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Keep this terminal open. Then visit:
+
+- dashboard: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- interactive API documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- health check: [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health)
+
+When the terminal displays `Application startup complete`, the project is ready.
+
+### 5. Use another port if 8000 is unavailable
+
+If the terminal reports `address already in use`, `WinError 10013`, or another port-binding error, start the application on port 8767:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8767
+```
+
+Then open [http://127.0.0.1:8767](http://127.0.0.1:8767). Only the port number in the browser address changes.
+
+### 6. Stop the application
+
+Click the terminal that is running Uvicorn and press `Ctrl+C`. Closing that terminal also stops the local server.
+
+### One-click Windows alternative
+
+Instead of the manual VS Code setup, run the included launcher from the project root:
+
+```powershell
+.\START_VANDRISHTI.bat
+```
+
+The launcher finds or installs Python 3.12, creates a compatible `.venv`, installs the packages, chooses an available port, starts the API, and opens the dashboard. Keep its terminal window open while using VanDrishti.
+
+## Run the CarbonSense module in VS Code (optional)
+
+CarbonSense is a separate application with its own environment. Open a second VS Code terminal and run:
+
+```powershell
+cd modules\carbon_footprint
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
+```
+
+Open [http://127.0.0.1:8001](http://127.0.0.1:8001). If port 8001 is unavailable, replace it with 8768 in both the command and browser address.
+
+Do not run `backend.app.main:app` from the CarbonSense folder. Return to the project root before starting VanDrishti.
+
+## Verify the installation
+
+Install the development requirements and run the VanDrishti tests from the project root:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+Run the CarbonSense tests from its own folder and environment:
+
+```powershell
+cd modules\carbon_footprint
+.\.venv\Scripts\python.exe -m pytest -q
+cd ..\..
+```
+
+Expected result: 6 VanDrishti tests and 15 CarbonSense tests pass.
+
+## Common VS Code problems
+
+- **`No module named backend`**: the terminal is not at the project root. Run `cd ..\..` if you are inside `modules\carbon_footprint`.
+- **`No module named app` for CarbonSense**: run its command from `modules\carbon_footprint`, not from the project root.
+- **Wrong environment shown in the prompt**: run `deactivate`, return to the correct folder, and use the explicit `.\.venv\Scripts\python.exe` commands above.
+- **PowerShell says script execution is disabled**: do not activate the environment; use `.\.venv\Scripts\python.exe` directly as shown above.
+- **Port or socket error**: use port 8767 for VanDrishti or 8768 for CarbonSense.
+- **Package installation fails**: confirm `py -3.12 --version` works, delete only the affected `.venv` folder, recreate it, and rerun the installation commands.
+- **Satellite analysis is slow**: the first uncached request downloads remote Sentinel-2 bands and can take several seconds. The fallback satellite provider can take about a minute.
 
 ## Automatic satellite API
 
