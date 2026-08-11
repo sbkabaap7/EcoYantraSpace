@@ -38,6 +38,49 @@ The included `.vscode` configuration selects `.venv\Scripts\python.exe`
 automatically. You can also run **Terminal > Run Task > CarbonSense: run API**.
 The VS Code profile uses port `8001` to avoid conflicts with other local projects.
 
+#### VS Code and Windows troubleshooting
+
+Make sure VS Code is opened directly at the folder containing `app`,
+`requirements.txt` and `Dockerfile`. In the VS Code terminal, verify:
+
+```powershell
+Test-Path .\app\main.py
+Test-Path .\requirements.txt
+```
+
+Both commands must return `True`.
+
+Run the project without relying on environment activation:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
+```
+
+If Windows reports `[WinError 10013]` or says that the socket/port is not
+available, another application or a Windows port reservation may be blocking
+port `8001`. Try the fallback port:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8765
+```
+
+Then open `http://127.0.0.1:8765/`. If this works, reload mode can be enabled:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8765
+```
+
+Additional checks:
+
+- If the dashboard already opens on port `8001`, a server is already running;
+  do not start a second server on the same port.
+- If Windows Defender displays a firewall prompt, allow Python on private
+  networks.
+- Paste only the commands themselves into PowerShell. Do not paste Markdown
+  fence characters such as triple backticks or `~~~`.
+- Stop a running development server with `Ctrl+C`.
+
 ## Frontend integration
 
 ```js
