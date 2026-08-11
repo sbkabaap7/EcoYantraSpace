@@ -17,7 +17,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local editor and OS metadata
-.vscode/
 .idea/
 .DS_Store
 Thumbs.db

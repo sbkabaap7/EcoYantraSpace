@@ -27,6 +27,17 @@ uvicorn app.main:app --reload
 - Interactive API: `http://localhost:8000/docs`
 - Health: `http://localhost:8000/health`
 
+### Run in VS Code
+
+1. Open the `carbon footprints` folder itself in VS Code.
+2. Install the Microsoft Python extension if VS Code requests it.
+3. Open **Run and Debug** and select **Run CarbonSense API**.
+4. Press `F5`, then open `http://127.0.0.1:8001/`.
+
+The included `.vscode` configuration selects `.venv\Scripts\python.exe`
+automatically. You can also run **Terminal > Run Task > CarbonSense: run API**.
+The VS Code profile uses port `8001` to avoid conflicts with other local projects.
+
 ## Frontend integration
 
 ```js
