@@ -141,3 +141,16 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# VanDrishti Python/API artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+backend/checkpoints/*.pt
+backend/data/
+server-*.log
+gh-auth*.log
+.bootstrap_backup/
+*.zip

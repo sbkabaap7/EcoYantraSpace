@@ -1,0 +1,30 @@
+{
+  "model": "hybrid_ridge_energy_v2",
+  "dataset": {
+    "type": "synthetic_demo",
+    "hours": 2160,
+    "training_rows": 1593,
+    "validation_rows": 199,
+    "test_rows": 399,
+    "chronological_split": true,
+    "random_seed": 42
+  },
+  "test_metrics": {
+    "mae": 2.4053,
+    "rmse": 3.0277,
+    "mape_percent": 3.9319
+  },
+  "previous_day_baseline_metrics": {
+    "mae": 4.1699,
+    "rmse": 5.3569,
+    "mape_percent": 6.9138
+  },
+  "model_strategy": {
+    "type": "regularized regression + seasonal ensemble",
+    "regression_weight": 1.0,
+    "seasonal_weight": 0.0,
+    "interval_method": "chronological conformal residual quantiles"
+  },
+  "interval_test_coverage_percent": 89.72,
+  "warning": "Synthetic demo data and emission assumptions must be replaced for production."
+}

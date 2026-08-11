@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#071a14" />
+    <title>VanDrishti — Forest Change Intelligence</title>
+    <meta name="description" content="Compare satellite images and map forest loss and recovery across India." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="/assets/styles.css?v=red-aoi-2" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#">Van<span>Drishti</span></a>
+      <div class="status"><i></i><span id="api-status">Checking model</span></div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">FOREST CHANGE INTELLIGENCE · INDIA</p>
+          <h1>See where the<br /><em>forest changed.</em></h1>
+        </div>
+        <p class="lede">Draw an area, choose two periods, and let VanDrishti retrieve Sentinel-2 imagery automatically. It turns vegetation change into map-ready field intelligence.</p>
+      </section>
+
+      <section class="workspace">
+        <aside class="controls">
+          <div class="step-title"><b>01</b><div><h2>Select an area</h2><p>Draw a rectangle or use a preset</p></div></div>
+          <label class="select-label" for="region-preset">Forest landscape</label>
+          <select id="region-preset">
+            <option value="">Custom area</option>
+            <option value="western-ghats">Western Ghats · Kerala</option>
+            <option value="sundarbans">Sundarbans · West Bengal</option>
+            <option value="corbett">Corbett landscape · Uttarakhand</option>
+            <option value="bastar">Bastar forests · Chhattisgarh</option>
+            <option value="kaziranga">Kaziranga landscape · Assam</option>
+          </select>
+          <p class="hint">Keep the selected area below 2,500 km² for fast analysis.</p>
+          <div class="coordinate-grid">
+            <label>West<input id="west" type="number" step="any" value="77.0" /></label>
+            <label>South<input id="south" type="number" step="any" value="10.0" /></label>
+            <label>East<input id="east" type="number" step="any" value="77.3" /></label>
+            <label>North<input id="north" type="number" step="any" value="10.3" /></label>
+          </div>
+          <div class="area-readout"><span>Estimated area</span><b id="area-value">—</b></div>
+
+          <div class="divider"></div>
+          <div class="step-title"><b>02</b><div><h2>Choose observations</h2><p>Automatic Sentinel-2 is recommended</p></div></div>
+          <div class="mode-tabs" role="tablist">
+            <button id="mode-satellite" class="active" type="button" role="tab" aria-selected="true">Satellite</button>
+            <button id="mode-upload" type="button" role="tab" aria-selected="false">Upload</button>
+          </div>
+          <div id="satellite-fields">
+            <div class="period-block"><span>Before period</span><div class="date-grid"><label>From<input id="before-start" type="date" value="2023-01-01" /></label><label>To<input id="before-end" type="date" value="2023-02-28" /></label></div></div>
+            <div class="period-block"><span>After period</span><div class="date-grid"><label>From<input id="after-start" type="date" value="2025-01-01" /></label><label>To<input id="after-end" type="date" value="2025-02-28" /></label></div></div>
+            <label class="range-label" for="cloud"><span>Maximum scene cloud</span><output id="cloud-value">20%</output></label>
+            <input id="cloud" type="range" min="5" max="80" step="5" value="20" />
+          </div>
+          <div id="upload-fields" hidden>
+            <div class="upload-grid">
+              <label class="upload" for="before"><span class="upload-mark">−</span><b>Before image</b><small id="before-name">PNG, JPG, WEBP or TIFF</small><input id="before" type="file" accept="image/*" /></label>
+              <label class="upload" for="after"><span class="upload-mark">+</span><b>After image</b><small id="after-name">PNG, JPG, WEBP or TIFF</small><input id="after" type="file" accept="image/*" /></label>
+            </div>
+            <button class="text-button" id="demo" type="button">Use the sample pair →</button>
+          </div>
+          <label class="range-label" for="sensitivity"><span>Sensitivity</span><output id="sensitivity-value">55%</output></label>
+          <input id="sensitivity" type="range" min="0" max="1" step="0.05" value="0.55" />
+          <label class="range-label" for="minimum-patch"><span>Minimum loss patch</span><output id="minimum-patch-value">0.5 ha</output></label>
+          <input id="minimum-patch" type="range" min="0.1" max="10" step="0.1" value="0.5" />
+          <button class="primary" id="analyse" type="button"><span>Analyse Sentinel-2</span><i>↗</i></button>
+          <p class="message" id="message" role="status"></p>
+        </aside>
+
+        <section class="map-panel" aria-label="India forest change map">
+          <div id="map"></div>
+          <div class="map-instruction"><b>AREA OF INTEREST</b><span>Use the rectangle tool, drag the corner handles, or choose a forest preset.</span></div>
+          <div class="map-label"><span>INDIA</span><small id="map-mode-label">LIVE · SENTINEL-2 MODE</small></div>
+          <div class="legend"><span><i class="loss"></i>Forest loss</span><span><i class="gain"></i>Forest gain</span></div>
+          <label class="opacity-control" for="overlay-opacity"><span>Change overlay</span><input id="overlay-opacity" type="range" min="0" max="1" step="0.05" value="0.8" /></label>
+          <button id="clear-result" class="map-action" type="button">Clear result</button>
+        </section>
+      </section>
+
+      <section class="results" id="results" aria-live="polite">
+        <div class="results-heading"><div><p class="eyebrow">ANALYSIS COMPLETE</p><h2>Decision brief</h2></div><div class="result-actions"><button id="download-geojson" type="button">GeoJSON</button><button id="download-csv" type="button">CSV</button><button id="print-report" type="button">Print</button><span id="engine-label">—</span></div></div>
+        <div class="metrics">
+          <article><small>Forest loss</small><strong id="loss-value">—</strong><span>km²</span></article>
+          <article><small>Forest gain</small><strong id="gain-value">—</strong><span>km²</span></article>
+          <article><small>Net change</small><strong id="net-value">—</strong><span>km²</span></article>
+          <article><small>Area changed</small><strong id="percent-value">—</strong><span>%</span></article>
+        </div>
+        <div class="secondary-metrics">
+          <article><small>Forest cover before</small><strong id="cover-before-value">—</strong></article>
+          <article><small>Forest cover after</small><strong id="cover-after-value">—</strong></article>
+          <article><small>Annualised loss</small><strong id="annual-loss-value">—</strong></article>
+          <article><small>Loss in hectares</small><strong id="loss-hectares-value">—</strong></article>
+        </div>
+        <div class="insight-grid">
+          <article class="priority-card"><small>Field priority</small><strong id="priority-value">—</strong><p id="recommendation-value">—</p></article>
+          <article><small>Analysis confidence</small><strong id="confidence-value">—</strong><div class="confidence-bar"><i id="confidence-bar"></i></div><p>Based on valid pixels and scene cloud metadata.</p></article>
+          <article><small>Potential carbon exposure</small><strong id="carbon-value">—</strong><p>Indicative tCO₂e range from detected loss; verify locally.</p></article>
+        </div>
+        <div class="evidence-grid" id="evidence-grid" hidden>
+          <figure><img id="before-preview" alt="Earlier Sentinel-2 observation" /><figcaption><b>Before</b><span id="before-scene">—</span></figcaption></figure>
+          <figure><img id="after-preview" alt="Later Sentinel-2 observation" /><figcaption><b>After</b><span id="after-scene">—</span></figcaption></figure>
+          <div class="scene-details"><p class="eyebrow">SOURCE QUALITY</p><dl><div><dt>Valid pixels</dt><dd id="valid-value">—</dd></div><div><dt>Comparison</dt><dd id="comparison-value">—</dd></div><div><dt>Observation gap</dt><dd id="gap-value">—</dd></div><div><dt>Seasonal gap</dt><dd id="season-value">—</dd></div><div><dt>Mean NDVI</dt><dd id="ndvi-value">—</dd></div><div><dt>Retrieval</dt><dd id="retrieval-value">—</dd></div><div><dt>Trend</dt><dd id="trend-value">—</dd></div><div><dt>Top hotspots</dt><dd id="hotspot-count">—</dd></div><div><dt>Resolution</dt><dd>10 metres</dd></div></dl></div>
+        </div>
+        <div class="hotspots" id="hotspots" hidden><div><p class="eyebrow">FIELD VERIFICATION</p><h3>Largest loss hotspots</h3></div><ol id="hotspot-list"></ol></div>
+        <p class="result-note" id="result-note"></p>
+      </section>
+    </main>
+
+    <footer><span>VanDrishti · Hackathon prototype</span><a href="/docs" target="_blank">API documentation ↗</a></footer>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="/assets/app.js?v=red-aoi-2"></script>
+  </body>
+</html>
