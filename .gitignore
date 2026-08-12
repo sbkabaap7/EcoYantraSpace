@@ -1,6 +1,12 @@
 # Logs
 logs
 *.log
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+data/*.db
+data/*.db-journal
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
