@@ -10,8 +10,10 @@ import { apiRateLimiter } from "./middleware/rate-limit.js";
 import { requestId } from "./middleware/request-id.js";
 import { healthRouter } from "./modules/health/health.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
+import { anomalyRouter } from "./modules/anomaly/anomaly.routes.js";
+import { carbonRouter } from "./modules/carbon/carbon.routes.js";
+import { forestRouter } from "./modules/forest/forest.routes.js";
 import { projectsRouter } from "./modules/projects/projects.routes.js";
-import { mlRouter } from "./modules/ml/ml.routes.js";
 
 export function createApp(): Express {
   const app = express();
@@ -30,7 +32,9 @@ export function createApp(): Express {
   app.use(healthRouter);
   app.use("/api/v1", authRouter);
   app.use("/api/v1", projectsRouter);
-  app.use("/api/v1", mlRouter);
+  app.use("/api/v1", carbonRouter);
+  app.use("/api/v1", anomalyRouter);
+  app.use("/api/v1", forestRouter);
 
   app.use(notFound);
   app.use(errorHandler);

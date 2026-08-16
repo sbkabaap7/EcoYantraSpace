@@ -17,3 +17,19 @@ export const apiRateLimiter = rateLimit({
   standardHeaders: "draft-8",
   windowMs: env.RATE_LIMIT_WINDOW_MS,
 });
+
+export const authRateLimiter = rateLimit({
+  handler(request, response) {
+    response.status(429).json({
+      error: {
+        code: "AUTH_RATE_LIMIT_EXCEEDED",
+        message: "Too many authentication attempts. Please try again later.",
+      },
+      requestId: request.requestId,
+    });
+  },
+  legacyHeaders: false,
+  limit: env.AUTH_RATE_LIMIT_MAX,
+  standardHeaders: "draft-8",
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+});

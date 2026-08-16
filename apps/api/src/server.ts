@@ -1,15 +1,27 @@
-import { createServer } from "node:http";
-
-import { createApp } from "./app.js";
-import { env } from "./config/env.js";
-import { connectDatabase, disconnectDatabase } from "./db/mongoose.js";
-import { disconnectRedis, connectRedis } from "./integrations/redis.js";
-import { ensureBucket } from "./integrations/storage.js";
-import { startForestWorker } from "./jobs/forest.queue.js";
-import { logger } from "./observability/logger.js";
 import { startTelemetry, stopTelemetry } from "./observability/telemetry.js";
 
+// Instrumentation must start before loading HTTP, Express, database, queue, and Axios modules.
 startTelemetry();
+const [
+  { createServer },
+  { createApp },
+  { env },
+  { connectDatabase, disconnectDatabase },
+  { connectRedis, disconnectRedis },
+  { ensureBucket },
+  { startForestWorker },
+  { logger },
+] = await Promise.all([
+  import("node:http"),
+  import("./app.js"),
+  import("./config/env.js"),
+  import("./db/mongoose.js"),
+  import("./integrations/redis.js"),
+  import("./integrations/storage.js"),
+  import("./jobs/forest.queue.js"),
+  import("./observability/logger.js"),
+]);
+
 const app = createApp();
 const server = createServer(app);
 let forestWorker: ReturnType<typeof startForestWorker> | undefined;
@@ -29,30 +41,36 @@ function shutdown(signal: string, exitCode = 0): void {
   }, env.SHUTDOWN_TIMEOUT_MS);
   forceExitTimer.unref();
 
-  server.close(async (error) => {
-    clearTimeout(forceExitTimer);
+  server.close((httpError) => {
+    void (async () => {
+      try {
+        if (httpError) {
+          throw httpError;
+        }
 
-    if (error) {
-      logger.error({ error, signal }, "HTTP server failed to close cleanly");
-      process.exit(1);
-    }
-
-    await forestWorker?.close();
-    await disconnectRedis();
-    await disconnectDatabase();
-    await stopTelemetry();
-    logger.info({ signal }, "Graceful shutdown completed");
-    process.exit(exitCode);
+        await forestWorker?.close();
+        await disconnectRedis();
+        await disconnectDatabase();
+        await stopTelemetry();
+        clearTimeout(forceExitTimer);
+        logger.info({ signal }, "Graceful shutdown completed");
+        process.exit(exitCode);
+      } catch (error) {
+        clearTimeout(forceExitTimer);
+        logger.error({ err: error, signal }, "Graceful shutdown failed");
+        process.exit(1);
+      }
+    })();
   });
 }
 
 server.on("error", (error) => {
-  logger.fatal({ error }, "HTTP server failed");
+  logger.fatal({ err: error }, "HTTP server failed");
   process.exit(1);
 });
 
-async function start(): Promise<void> { await connectDatabase(); await connectRedis(); await ensureBucket(); forestWorker = startForestWorker(); server.listen(env.PORT, env.HOST, () => { logger.info({ host: env.HOST, port: env.PORT }, "EcoYantraSpace API listening"); }); }
-void start().catch((error: unknown) => { logger.fatal({ error }, "API startup failed"); process.exit(1); });
+async function start(): Promise<void> { await connectDatabase(); await connectRedis(); await ensureBucket(); forestWorker = startForestWorker(); await forestWorker.waitUntilReady(); server.listen(env.PORT, env.HOST, () => { logger.info({ host: env.HOST, port: env.PORT }, "EcoYantraSpace API listening"); }); }
+void start().catch((error: unknown) => { logger.fatal({ err: error }, "API startup failed"); process.exit(1); });
 
 process.on("SIGINT", () => {
   shutdown("SIGINT");
@@ -63,11 +81,11 @@ process.on("SIGTERM", () => {
 });
 
 process.on("uncaughtException", (error) => {
-  logger.fatal({ error }, "Uncaught exception");
+  logger.fatal({ err: error }, "Uncaught exception");
   shutdown("uncaughtException", 1);
 });
 
 process.on("unhandledRejection", (reason) => {
-  logger.fatal({ reason }, "Unhandled promise rejection");
+  logger.fatal({ err: reason }, "Unhandled promise rejection");
   shutdown("unhandledRejection", 1);
 });

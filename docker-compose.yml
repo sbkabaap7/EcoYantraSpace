@@ -12,14 +12,47 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       NODE_ENV: production
       PORT: 4000
-      TRUST_PROXY: 1
+      SHUTDOWN_TIMEOUT_MS: ${SHUTDOWN_TIMEOUT_MS:-210000}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
       MONGODB_URI: mongodb://mongo:27017/ecoyantra
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your .env file}
+      JWT_ISSUER: ${JWT_ISSUER:-ecoyantra-space}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-ecoyantra-api}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_SESSION_TTL_DAYS: ${REFRESH_SESSION_TTL_DAYS:-30}
+      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-ecoyantra_refresh}
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+      REFRESH_COOKIE_SAME_SITE: ${REFRESH_COOKIE_SAME_SITE:-lax}
+      REFRESH_COOKIE_DOMAIN: ${REFRESH_COOKIE_DOMAIN:-}
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-20}
       CARBON_ML_URL: http://carbon-ml:8000
       ANOMALY_ML_URL: http://anomaly-ml:8000
       FOREST_ML_URL: http://forest-ml:8000
       S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-ecoyantra-artifacts}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      SENTRY_ENABLED: ${SENTRY_ENABLED:-false}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-ecoyantra-api}
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-none}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-none}
+      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-none}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    depends_on:
+      anomaly-ml:
+        condition: service_healthy
+      carbon-ml:
+        condition: service_healthy
+      forest-ml:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     init: true
     ports:
       - "${API_PORT:-4000}:4000"
@@ -28,42 +61,106 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 10s
     restart: unless-stopped
+    stop_grace_period: 220s
     networks:
       - platform
 
   mongo:
     image: mongo:8
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "quit(db.adminCommand('ping').ok ? 0 : 2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
     volumes: [mongo-data:/data/db]
     networks: [platform]
 
   redis:
     image: redis:8-alpine
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     restart: unless-stopped
+    volumes: [redis-data:/data]
     networks: [platform]
 
   minio:
     image: minio/minio:latest
     command: server /data --console-address :9001
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
     volumes: [minio-data:/data]
     networks: [platform]
 
   carbon-ml:
     build: ./ML/Carbon
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from urllib.request import urlopen;urlopen('http://localhost:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
     networks: [platform]
 
   anomaly-ml:
     build: ./ML/Anomaly
-    environment: { SEED_DEMO_DATA: "false" }
+    environment:
+      ECOSPHERE_DB: /app/data/ecospherai.db
+      SEED_DEMO_DATA: "false"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from urllib.request import urlopen;urlopen('http://localhost:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    volumes: [anomaly-data:/app/data]
     networks: [platform]
 
   forest-ml:
     build: ./ML/Forest
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from urllib.request import urlopen;urlopen('http://localhost:8000/api/v1/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
     networks: [platform]
 
   web:
@@ -82,6 +179,12 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     restart: unless-stopped
     networks:
       - platform
@@ -91,5 +194,7 @@ networks:
     driver: bridge
 
 volumes:
+  anomaly-data:
   mongo-data:
   minio-data:
+  redis-data:

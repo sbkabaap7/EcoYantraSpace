@@ -1,0 +1,15 @@
+/* Original cinematic treatment: environmental field signals, not reference-site assets. */
+.hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .55; background-image: radial-gradient(circle at 70% 47%, rgba(172, 255, 111, .78) 0 1px, transparent 2px), radial-gradient(circle at 53% 28%, rgba(172, 255, 111, .55) 0 1px, transparent 2px), radial-gradient(circle at 82% 67%, rgba(172, 255, 111, .35) 0 1px, transparent 2px); background-size: 87px 101px, 141px 131px, 179px 163px; mask-image: radial-gradient(circle at 72% 50%, black 0, transparent 54%); animation: field-drift 14s linear infinite; }
+.hero-copy h1 { max-width: 760px; text-wrap: balance; }
+.hero-copy h1 em { text-shadow: 0 0 38px rgba(142, 237, 168, .16); }
+.orbital-scene { filter: saturate(1.08); }
+.earth { box-shadow: inset -42px -38px 55px #020705, 0 0 100px rgba(94, 201, 135, .3), 0 40px 100px rgba(0, 0, 0, .45); }
+.signal { border-color: rgba(166, 243, 188, .22); backdrop-filter: blur(16px); }
+.signal::before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px var(--green); vertical-align: 1px; }
+.metric-strip { position: relative; background: rgba(9, 24, 15, .4); }
+.system-card { transition: transform .34s cubic-bezier(.22, 1, .36, 1), border-color .34s ease, background .34s ease; }
+.system-card:hover { transform: translateY(-8px); border-color: rgba(166, 243, 188, .38); background: #102017; }
+.topography { background: radial-gradient(circle at 58% 46%, rgba(117, 221, 134, .16), transparent 27%), #07140c; }
+@keyframes field-drift { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 87px -101px, -141px 131px, 179px -163px; } }
+@media (max-width: 820px) { .hero::after { mask-image: radial-gradient(circle at 62% 70%, black 0, transparent 53%); opacity: .4; } .hero-copy h1 { max-width: 560px; } }
+@media (prefers-reduced-motion: reduce) { .hero::after { animation: none; } }

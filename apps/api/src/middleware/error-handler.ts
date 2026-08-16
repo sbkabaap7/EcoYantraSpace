@@ -2,6 +2,7 @@ import type { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
 
 import { env } from "../config/env.js";
+import { captureException } from "../observability/telemetry.js";
 import { logger } from "../observability/logger.js";
 import { HttpError } from "../utils/http-error.js";
 
@@ -63,7 +64,8 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, _nex
   const normalized = normalizeError(error);
 
   if (normalized.statusCode >= 500) {
-    logger.error({ error, requestId: request.requestId }, "Unhandled request error");
+    captureException(error, request.requestId);
+    logger.error({ err: error, requestId: request.requestId }, "Unhandled request error");
   } else {
     logger.warn({ code: normalized.body.code, requestId: request.requestId }, "Request rejected");
   }

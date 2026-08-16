@@ -31,7 +31,7 @@ into the web or API applications.
 
 - Node.js 24 or newer
 - pnpm 11.19.0 (Corepack is recommended)
-- Docker Desktop, optionally, for container verification
+- Docker Desktop for the complete local application
 
 ## Install
 
@@ -40,30 +40,33 @@ corepack enable
 pnpm install
 ```
 
-Copy the example environment files before local development:
+For the complete Docker environment, create the required root environment file:
 
 ```powershell
-Copy-Item apps/api/.env.example apps/api/.env
-Copy-Item apps/web/.env.example apps/web/.env.local
+Copy-Item .env.example .env
+$jwtBytes = New-Object byte[] 48
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($jwtBytes)
+$jwtSecret = [Convert]::ToBase64String($jwtBytes)
+(Get-Content .env) -replace '^JWT_SECRET=.*$', "JWT_SECRET=$jwtSecret" | Set-Content .env
 ```
 
-The defaults run the web application on port `3000` and the API on port `4000`. Only the Node API
-address is exposed to browser code. Internal ML service addresses will be added when the integration
-phase begins.
+The example JWT value is intentionally rejected; the commands above generate a unique local secret.
+The defaults publish only the web application on port `3000` and Node API on port `4000`; Python ML
+services, MongoDB, Redis, and MinIO remain private on the Compose network.
 
 ## Development
 
-Run both applications:
+The production-like local workflow is Docker Compose:
 
 ```powershell
-pnpm dev
+docker compose up --build -d
 ```
 
-Or run one application at a time:
+For frontend-only iteration against an already running API:
 
 ```powershell
+Copy-Item apps/web/.env.example apps/web/.env.local
 pnpm dev:web
-pnpm dev:api
 ```
 
 - Web: `http://localhost:3000`
@@ -82,15 +85,24 @@ pnpm format:check
 
 ## Containers
 
-The Compose foundation starts only the web and API applications. MongoDB, Redis, BullMQ, and
-ML-service wiring are intentionally deferred to later phases.
+Compose starts the complete application: Next.js, Express, MongoDB, durable Redis/BullMQ, MinIO,
+Carbon ML, Anomaly ML, and Forest ML. Forest jobs are queued and their generated image artifacts are
+served through authenticated Node routes; the browser never receives MinIO credentials or ML URLs.
 
 ```powershell
-docker compose up --build
+docker compose up --build -d
+docker compose ps
 ```
+
+Open `http://localhost:3000`, create an account and project, then use the Carbon, Anomaly, and Forest
+workspaces. Stop the stack with `docker compose down`; named volumes retain MongoDB, Redis, MinIO,
+and Anomaly detector state.
 
 ## Environment and secrets
 
 Tracked `.env.example` files document configuration. Real `.env` files are ignored and must never be
-committed. See [`docs/architecture/ml-service-audit.md`](docs/architecture/ml-service-audit.md) for
-the integration boundaries and current ML risks.
+committed. Use `REFRESH_COOKIE_SECURE=true` with HTTPS and set `TRUST_PROXY` only when the API is
+actually behind a trusted reverse proxy. Sentry is opt-in through `SENTRY_ENABLED`/`SENTRY_DSN`, and
+OpenTelemetry uses standard `OTEL_*` environment variables. See
+[`docs/architecture/ml-service-audit.md`](docs/architecture/ml-service-audit.md) for the integration
+boundary and ML contracts.
